@@ -1,21 +1,21 @@
 const jwt = require("jsonwebtoken");
 
-const protect = (req, res, next) => {
-  const header = req.headers.authorization;
-
-  if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({
-      success: false,
-      message: "Not authorized. Please login first.",
-    });
-  }
-
+const authMiddleware = (req, res, next) => {
   try {
-    const token = header.split(" ")[1];
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized. Please login again.",
+      });
+    }
+
+    const token = authHeader.split(" ")[1];
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.admin = decoded;
+    req.adminId = decoded.id;
 
     next();
   } catch (error) {
@@ -26,4 +26,4 @@ const protect = (req, res, next) => {
   }
 };
 
-module.exports = protect;
+module.exports = authMiddleware;

@@ -1,6 +1,6 @@
 const express = require("express");
 const upload = require("../utils/multer");
-const protect = require("../middleware/authMiddleware");
+const authMiddleware = require("../middleware/authMiddleware");
 
 const {
   createProduct,
@@ -12,13 +12,20 @@ const {
 
 const router = express.Router();
 
+// Public routes: needed so product list can load
 router.get("/", getProducts);
 router.get("/:id", getProductById);
 
-router.post("/", protect, upload.single("productImage"), createProduct);
+// Protected admin routes
+router.post("/", authMiddleware, upload.single("productImage"), createProduct);
 
-router.put("/:id", protect, upload.single("productImage"), updateProduct);
+router.put(
+  "/:id",
+  authMiddleware,
+  upload.single("productImage"),
+  updateProduct,
+);
 
-router.delete("/:id", protect, deleteProduct);
+router.delete("/:id", authMiddleware, deleteProduct);
 
 module.exports = router;

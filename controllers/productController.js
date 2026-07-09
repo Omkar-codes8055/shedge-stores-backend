@@ -93,16 +93,7 @@ const getProductById = async (req, res) => {
 // Update Product
 const updateProduct = async (req, res) => {
   try {
-    const updateData = { ...req.body };
-
-    if (req.file) {
-      updateData.productImage = `/uploads/${req.file.filename}`;
-    }
-
-    const product = await Product.findByIdAndUpdate(req.params.id, updateData, {
-      new: true,
-      runValidators: true,
-    });
+    const product = await Product.findById(req.params.id);
 
     if (!product) {
       return res.status(404).json({
@@ -111,10 +102,50 @@ const updateProduct = async (req, res) => {
       });
     }
 
+    const {
+      productName,
+      category,
+      brand,
+      price,
+      discountPercentage,
+      stockQuantity,
+      description,
+      status,
+    } = req.body;
+
+    const updatedPrice = Number(price);
+    const updatedDiscount = Number(discountPercentage || 0);
+
+    const updatedData = {
+      productName,
+      category,
+      brand,
+      price: updatedPrice,
+      discountPercentage: updatedDiscount,
+      stockQuantity: Number(stockQuantity),
+      description,
+      status,
+      finalPrice: updatedPrice - (updatedPrice * updatedDiscount) / 100,
+    };
+
+    // Change image only if a new image was selected
+    if (req.file) {
+      updatedData.productImage = `/uploads/${req.file.filename}`;
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      updatedData,
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+
     res.status(200).json({
       success: true,
       message: "Product updated successfully",
-      product,
+      product: updatedProduct,
     });
   } catch (error) {
     res.status(500).json({
