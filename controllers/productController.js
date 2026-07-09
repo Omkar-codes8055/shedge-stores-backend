@@ -23,13 +23,17 @@ const createProduct = async (req, res) => {
       });
     }
 
+    const numericPrice = Number(price);
+    const numericDiscount = Number(discountPercentage || 0);
+
     const product = await Product.create({
       productName,
       category,
       brand,
-      price,
-      discountPercentage,
-      stockQuantity,
+      price: numericPrice,
+      discountPercentage: numericDiscount,
+      finalPrice: numericPrice - (numericPrice * numericDiscount) / 100,
+      stockQuantity: Number(stockQuantity),
       description,
       status,
       productImage: `/uploads/${req.file.filename}`,
@@ -48,14 +52,61 @@ const createProduct = async (req, res) => {
   }
 };
 
-// Get All Products
+// Get Products with Search, Filters, Sorting and Pagination
 const getProducts = async (req, res) => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 });
+    const {
+      search = "",
+      category = "All",
+      status = "All",
+      sortBy = "date",
+      page = 1,
+      limit = 5,
+    } = req.query;
+
+    const query = {};
+
+    if (search.trim()) {
+      query.productName = {
+        $regex: search.trim(),
+        $options: "i",
+      };
+    }
+
+    if (category !== "All") {
+      query.category = category;
+    }
+
+    if (status !== "All") {
+      query.status = status;
+    }
+
+    let sortOption = { createdAt: -1 };
+
+    if (sortBy === "price") {
+      sortOption = { finalPrice: 1 };
+    }
+
+    if (sortBy === "name") {
+      sortOption = { productName: 1 };
+    }
+
+    const pageNumber = Math.max(Number(page) || 1, 1);
+    const limitNumber = Math.max(Number(limit) || 5, 1);
+
+    const totalProducts = await Product.countDocuments(query);
+
+    const products = await Product.find(query)
+      .sort(sortOption)
+      .skip((pageNumber - 1) * limitNumber)
+      .limit(limitNumber);
 
     res.status(200).json({
       success: true,
       count: products.length,
+      totalProducts,
+      totalPages: Math.ceil(totalProducts / limitNumber),
+      currentPage: pageNumber,
       products,
     });
   } catch (error) {
@@ -128,8 +179,19 @@ const updateProduct = async (req, res) => {
       finalPrice: updatedPrice - (updatedPrice * updatedDiscount) / 100,
     };
 
-    // Change image only if a new image was selected
     if (req.file) {
+      // Remove the old local image when a replacement is uploaded.
+      if (
+        product.productImage &&
+        product.productImage.startsWith("/uploads/")
+      ) {
+        const oldImagePath = path.join(__dirname, "..", product.productImage);
+
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
+      }
+
       updatedData.productImage = `/uploads/${req.file.filename}`;
     }
 
@@ -167,7 +229,6 @@ const deleteProduct = async (req, res) => {
       });
     }
 
-    // Delete image from uploads folder
     if (product.productImage && product.productImage.startsWith("/uploads/")) {
       const imagePath = path.join(__dirname, "..", product.productImage);
 
