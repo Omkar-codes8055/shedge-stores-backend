@@ -6,6 +6,20 @@ const registerAdmin = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, email and password are required",
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters",
+      });
+    }
+
     const adminExists = await Admin.findOne({ email });
 
     if (adminExists) {
@@ -25,13 +39,17 @@ const registerAdmin = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Admin Registered Successfully",
-      admin,
+      message: "Admin registered successfully",
+      admin: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+      },
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Unable to register admin",
     });
   }
 };
@@ -45,7 +63,7 @@ const loginAdmin = async (req, res) => {
     if (!admin) {
       return res.status(400).json({
         success: false,
-        message: "Invalid Email",
+        message: "Invalid email or password",
       });
     }
 
@@ -54,19 +72,13 @@ const loginAdmin = async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({
         success: false,
-        message: "Invalid Password",
+        message: "Invalid email or password",
       });
     }
 
-    const token = jwt.sign(
-      {
-        id: admin._id,
-      },
-      "secret123",
-      {
-        expiresIn: "7d",
-      },
-    );
+    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
     res.status(200).json({
       success: true,
@@ -80,7 +92,7 @@ const loginAdmin = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Unable to login",
     });
   }
 };
