@@ -12,11 +12,11 @@ const {
 
 const router = express.Router();
 
-// Public routes: needed so product list can load
-router.get("/", getProducts);
-router.get("/:id", getProductById);
+// Protect ALL routes
+router.get("/", authMiddleware, getProducts);
 
-// Protected admin routes
+router.get("/:id", authMiddleware, getProductById);
+
 router.post("/", authMiddleware, upload.single("productImage"), createProduct);
 
 router.put(
